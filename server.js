@@ -7,44 +7,52 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// 调用 OpenAI API
+// DeepSeek AI
 async function getAIResponse(userText) {
-  const apiKey = process.env.OPENAI_API_KEY;
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  // 读取 DeepSeek API Key
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+
+  // 调用 DeepSeek API
+  const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: 'gpt-3.5-turbo',
+      model: 'deepseek-chat',
       messages: [
         {
           role: 'user',
           content: userText
         }
       ],
+      temperature: 0.7,
       max_tokens: 200
     })
   });
 
-  // 打印 OpenAI 返回结果（方便排错）
   const data = await response.json();
+
+  // 打印日志方便排错
   console.log(data);
 
-  // OpenAI 返回错误
+  // 如果 API 返回错误
   if (data.error) {
     throw new Error(data.error.message);
   }
 
+  // 返回 AI 回复
   return data.choices[0].message.content;
 }
 
 // API接口
 app.post('/api/ask', async (req, res) => {
+
   const { question } = req.body;
 
+  // 判断是否为空
   if (!question) {
     return res.status(400).json({
       error: '问题不能为空'
@@ -52,13 +60,17 @@ app.post('/api/ask', async (req, res) => {
   }
 
   try {
+
+    // 获取 AI 回复
     const answer = await getAIResponse(question);
 
+    // 返回给前端
     res.json({
       answer
     });
 
   } catch (err) {
+
     console.error(err);
 
     res.status(500).json({
@@ -69,9 +81,10 @@ app.post('/api/ask', async (req, res) => {
 
 // 首页测试
 app.get('/', (req, res) => {
-  res.send('AI助手后端运行成功');
+  res.send('DeepSeek AI 后端运行成功');
 });
 
+// 启动服务
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
