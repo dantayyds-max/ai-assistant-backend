@@ -1,31 +1,43 @@
 const express = require('express');
 const cors = require('cors');
-const app = express();
+const fetch = require('node-fetch'); // 如果 node 版本 < 18, 需安装：npm install node-fetch@2
 
-// Vercel/Render动态端口
+const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
 
-function getAIResponse(userText) {
-  userText = userText.toLowerCase();
-  if (userText.includes('你好') || userText.includes('hello')) {
-    return '你好！我是你的AI小助手，有什么可以帮你的吗？';
-  } else if (userText.includes('javascript')) {
-    return '你想学习JavaScript吗？可以试试MDN文档，非常适合入门。';
-  } else if (userText.includes('html')) {
-    return 'HTML是网页的骨架，你可以使用标签来构建网页内容。';
-  } else {
-    return '抱歉，我还不太理解你的意思，可以换个问题吗？';
-  }
+// 调用 OpenAI GPT API
+async function getAIResponse(userText) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "user", content: userText }],
+      max_tokens: 200
+    })
+  });
+
+  const data = await response.json();
+  return data.choices[0].message.content;
 }
 
-app.post('/api/ask', (req, res) => {
+app.post('/api/ask', async (req, res) => {
   const { question } = req.body;
   if (!question) return res.status(400).json({ error: '问题不能为空' });
-  const answer = getAIResponse(question);
-  res.json({ answer });
+  try {
+    const answer = await getAIResponse(question);
+    res.json({ answer });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'AI服务调用失败' });
+  }
 });
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
